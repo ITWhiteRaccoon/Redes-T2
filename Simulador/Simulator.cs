@@ -47,7 +47,7 @@ public class Simulator
                         var ports = new Port[numOfPorts];
                         for (var j = 0; j < numOfPorts; j++)
                         {
-                            ports[j] = new Port(content[j + 2].Trim(), content[j + 3].Trim());
+                            ports[j] = new Port(content[j * 2 + 2].Trim(), content[j * 2 + 3].Trim());
                         }
 
                         _routers[content[0].Trim()] = new Router(ports);
