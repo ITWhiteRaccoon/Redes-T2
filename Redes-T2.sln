@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Simulador", "Simulador\Simulador.csproj", "{F02C9B57-104D-45CE-AF23-12EFE236FF67}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test-Redes-T2", "Test-Redes-T2\Test-Redes-T2.csproj", "{1CEDEDCE-3C99-47C3-A0BB-2D8D66C2811F}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F02C9B57-104D-45CE-AF23-12EFE236FF67}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F02C9B57-104D-45CE-AF23-12EFE236FF67}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F02C9B57-104D-45CE-AF23-12EFE236FF67}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F02C9B57-104D-45CE-AF23-12EFE236FF67}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1CEDEDCE-3C99-47C3-A0BB-2D8D66C2811F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1CEDEDCE-3C99-47C3-A0BB-2D8D66C2811F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1CEDEDCE-3C99-47C3-A0BB-2D8D66C2811F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1CEDEDCE-3C99-47C3-A0BB-2D8D66C2811F}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
