@@ -15,6 +15,11 @@ public class Simulator
     private string ICMPEchoReply = $"{srcName} ->> {dstName} : ICMP Echo Reply<br/>src={srcIP} dst={dstIP} ttl={TTL}";
     private string ICMPTimeExceeded = $"{srcName} ->> {dstName} : ICMP Time Exceeded<br/>src={srcIP} dst={dstIP} ttl={TTL}";
     */
+    private string ArpRequest = "[yellow]Note[/] over [yellow]{0}[/] : [blue]ARP Request[/]<br/>Who has {1}? Tell {2}";
+    private string ArpReply = "[yellow]{0}[/] ->> [yellow]{1}[/] : [blue]ARP Reply[/]<br/>{2} is at {3}";
+    private string ICMPEchoRequest = "[yellow]{0}[/] ->> [yellow]{1}[/] : [blue]ICMP Echo Request[/]<br/>src={2} dst={3} ttl={4}";
+    private string ICMPEchoReply = "[yellow]{0}[/] ->> [yellow]{1}[/] : [blue]ICMP Echo Reply[/]<br/>src={2} dst={3} ttl={4}";
+    private string ICMPTimeExceeded = "[yellow]{0}[/] ->> [yellow]{1}[/] : [blue]ICMP Time Exceeded[/]<br/>src={2} dst={3} ttl={4}";
 
     public Simulator(string topologyFilePath)
     {
@@ -31,7 +36,10 @@ public class Simulator
             if (line.StartsWith('#'))
             {
                 currentMode = Enum.Parse<ReadingMode>(line[1..].ToLower());
+
+#if DEBUG
                 AnsiConsole.MarkupLine($"Reading [yellow]{currentMode}[/] configuration");
+#endif
             }
             else
             {
@@ -40,7 +48,6 @@ public class Simulator
                 {
                     case ReadingMode.node:
                         _nodes[content[0].Trim()] = new Node(content[1].Trim(), content[2].Trim(), content[3].Trim());
-                        AnsiConsole.MarkupLine($"Added node [yellow]{content[0]}[/] {_nodes[content[0].Trim()]}");
                         break;
                     case ReadingMode.router:
                         var numOfPorts = int.Parse(content[1].Trim());
@@ -51,15 +58,108 @@ public class Simulator
                         }
 
                         _routers[content[0].Trim()] = new Router(ports);
-                        AnsiConsole.MarkupLine($"Added router [yellow]{content[0]}[/] {_routers[content[0].Trim()]}");
                         break;
                     case ReadingMode.routertable:
                         _routerTable.Add(new RouterTableEntry(content[0].Trim(), content[1].Trim(), content[2].Trim(),
                             content[3].Trim()));
-                        AnsiConsole.MarkupLine($"Added to router table {_routerTable.Last()}");
+                        break;
+                    default:
+                        AnsiConsole.MarkupLine("How did you get here? This topology file must be [red]invalid[/].");
                         break;
                 }
             }
         }
+
+#if DEBUG
+        AnsiConsole.MarkupLine("Finished configuration:");
+        PrintNodes();
+        PrintRouters();
+        PrintRouterTable();
+#endif
+    }
+
+    public void Ping(string srcName, string dstName)
+    {
+        var srcNode = _nodes[srcName];
+        var dstNode = _nodes[dstName];
+
+        AnsiConsole.MarkupLine($"");
+    }
+
+    public void PrintNodes()
+    {
+        var table = new Table
+        {
+            Title = new TableTitle("Nodes", new Style(decoration: Decoration.Bold | Decoration.Underline)),
+            Border = TableBorder.Rounded
+        };
+
+        table.AddColumn("Node");
+        table.AddColumn("MAC");
+        table.AddColumn("IP");
+        table.AddColumn("Gateway");
+
+        foreach (var entry in _nodes)
+        {
+            table.AddRow(entry.Key, entry.Value.Port.Mac, entry.Value.Port.Ip, entry.Value.Gateway);
+        }
+
+        AnsiConsole.Write(table);
+    }
+
+    public void PrintRouters()
+    {
+        var table = new Table
+        {
+            Title = new TableTitle("Routers", new Style(decoration: Decoration.Bold | Decoration.Underline)),
+            Border = TableBorder.Rounded
+        };
+
+        var maxNumberOfPorts = _routers.Max(x => x.Value.Ports.Length);
+
+        table.AddColumn("Router");
+        table.AddColumn("N. of ports");
+        for (var i = 0; i < maxNumberOfPorts; i++)
+        {
+            table.AddColumn($"MAC{i}");
+            table.AddColumn($"IP{i}");
+        }
+
+        foreach (var entry in _routers)
+        {
+            var row = new string[entry.Value.NumberOfPorts * 2 + 2];
+            row[0] = entry.Key;
+            row[1] = entry.Value.NumberOfPorts.ToString();
+            for (var i = 0; i < entry.Value.NumberOfPorts; i++)
+            {
+                row[i * 2 + 2] = entry.Value.Ports[i].Mac;
+                row[i * 2 + 3] = entry.Value.Ports[i].Ip;
+            }
+
+            table.AddRow(row);
+        }
+
+        AnsiConsole.Write(table);
+    }
+
+    public void PrintRouterTable()
+    {
+        var table = new Table
+        {
+            Title = new TableTitle("Router Table", new Style(decoration: Decoration.Bold | Decoration.Underline)),
+            Border = TableBorder.Rounded
+        };
+
+        table.AddColumn("Router");
+        table.AddColumn("Destination");
+        table.AddColumn("Next Hop");
+        table.AddColumn("Port");
+
+        foreach (var entry in _routerTable)
+        {
+            table.AddRow(entry.RouterName, entry.Destination, entry.NextHop, entry.Port);
+        }
+
+        AnsiConsole.Write(table);
     }
 }

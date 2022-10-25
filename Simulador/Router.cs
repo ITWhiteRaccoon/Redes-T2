@@ -4,6 +4,8 @@ public class Router
 {
     public Port[] Ports { get; }
 
+    public int NumberOfPorts => Ports.Length;
+
     public Router(Port[] ports)
     {
         Ports = ports;

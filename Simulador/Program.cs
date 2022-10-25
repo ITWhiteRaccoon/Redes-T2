@@ -17,6 +17,19 @@ public class Program : Command<Program.Settings>
         AnsiConsole.MarkupLine(
             $"simulador <[yellow]{settings.TopologyFilePath}[/]> <[yellow]{settings.Command}[/]> <[yellow]{settings.Source}[/]> <[yellow]{settings.Destination}[/]>");
         var simulator = new Simulator(settings.TopologyFilePath);
+        switch (settings.Command)
+        {
+            case CommandType.ping:
+                simulator.Ping(settings.Source, settings.Destination);
+                break;
+            case CommandType.traceroute:
+                simulator.Traceroute(settings.Source, settings.Destination);
+                break;
+            default:
+                AnsiConsole.MarkupLine("How did you get here? This command is [red]invalid[/].");
+                break;
+        }
+
         return 0;
     }
 
