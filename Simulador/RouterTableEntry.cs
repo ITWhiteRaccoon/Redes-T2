@@ -17,6 +17,6 @@ public class RouterTableEntry
 
     public override string ToString()
     {
-        return $"(Destination: {Destination}, NextHop: {NextHop}, Port: {Port})";
+        return $"(Router: {RouterName}, Destination: {Destination}, NextHop: {NextHop}, Port: {Port})";
     }
 }

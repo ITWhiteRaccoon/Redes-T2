@@ -56,7 +56,7 @@ public class Simulator
                     case ReadingMode.routertable:
                         _routerTable.Add(new RouterTableEntry(content[0].Trim(), content[1].Trim(), content[2].Trim(),
                             content[3].Trim()));
-                        AnsiConsole.MarkupLine($"Added to router table [yellow]{content[0]}[/] {_routerTable.Last()}");
+                        AnsiConsole.MarkupLine($"Added to router table {_routerTable.Last()}");
                         break;
                 }
             }
