@@ -8,8 +8,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="Spectre.Console" Version="0.45.1-preview.0.28" />
-      <PackageReference Include="Spectre.Console.Cli" Version="0.45.1-preview.0.28" />
+        <PackageReference Include="Spectre.Console" Version="0.45.1-preview.0.28" />
+        <PackageReference Include="Spectre.Console.Cli" Version="0.45.1-preview.0.28" />
     </ItemGroup>
 
 </Project>

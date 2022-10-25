@@ -1,26 +1,65 @@
-﻿using System.Data;
-using System.Diagnostics.CodeAnalysis;
-using Spectre.Console;
-using Spectre.Console.Cli;
+﻿using Spectre.Console;
 
 namespace Simulador;
 
-public class Simulator : Command<Simulator.Settings>
+public class Simulator
 {
-    public sealed class Settings : CommandSettings
+    private Dictionary<string, Node> _nodes;
+    private Dictionary<string, Router> _routers;
+    private List<RouterTableEntry> _routerTable;
+
+    /*
+    private string ArpRequest = $"Note over {srcName} : ARP Request<br/>Who has {dstIP}? Tell {srcIP}";
+    private string ArpReply = $"{srcName} ->> {dstName} : ARP Reply<br/>{srcIP} is at {srcMAC}";
+    private string ICMPEchoRequest = $"{srcName} ->> {dstName} : ICMP Echo Request<br/>src={srcIP} dst={dstIP} ttl={TTL}";
+    private string ICMPEchoReply = $"{srcName} ->> {dstName} : ICMP Echo Reply<br/>src={srcIP} dst={dstIP} ttl={TTL}";
+    private string ICMPTimeExceeded = $"{srcName} ->> {dstName} : ICMP Time Exceeded<br/>src={srcIP} dst={dstIP} ttl={TTL}";
+    */
+
+    public Simulator(string topologyFilePath)
     {
-        [CommandArgument(0, "<topologia>")] public string TopologyFilePath { get; set; }
+        _nodes = new Dictionary<string, Node>();
+        _routers = new Dictionary<string, Router>();
+        _routerTable = new List<RouterTableEntry>();
 
-        [CommandArgument(1, "<comando>")] public CommandType Command { get; set; }
+        var file = File.ReadAllLines(topologyFilePath);
+        var currentMode = ReadingMode.node;
 
-        [CommandArgument(2, "<origem>")] public string Source { get; set; }
+        for (var i = 0; i < file.Length; i++)
+        {
+            var line = file[i].Trim();
+            if (line.StartsWith('#'))
+            {
+                currentMode = Enum.Parse<ReadingMode>(line[1..].ToLower());
+                AnsiConsole.MarkupLine($"Reading [yellow]{currentMode}[/] configuration");
+            }
+            else
+            {
+                var content = line.Split(',');
+                switch (currentMode)
+                {
+                    case ReadingMode.node:
+                        _nodes[content[0].Trim()] = new Node(content[1].Trim(), content[2].Trim(), content[3].Trim());
+                        AnsiConsole.MarkupLine($"Added node [yellow]{content[0]}[/] {_nodes[content[0].Trim()]}");
+                        break;
+                    case ReadingMode.router:
+                        var numOfPorts = int.Parse(content[1].Trim());
+                        var ports = new Port[numOfPorts];
+                        for (var j = 0; j < numOfPorts; j++)
+                        {
+                            ports[j] = new Port(content[j + 2].Trim(), content[j + 3].Trim());
+                        }
 
-        [CommandArgument(3, "<destino>")] public string Destination { get; set; }
-    }
-
-    public override int Execute([NotNull] CommandContext context, [NotNull] Settings settings)
-    {
-        AnsiConsole.MarkupLine($"simulador <[yellow]{settings.TopologyFilePath}[/]> <[yellow]{settings.Command}[/]> <[yellow]{settings.Source}[/]> <[yellow]{settings.Destination}[/]>");
-        return 0;
+                        _routers[content[0].Trim()] = new Router(ports);
+                        AnsiConsole.MarkupLine($"Added router [yellow]{content[0]}[/] {_routers[content[0].Trim()]}");
+                        break;
+                    case ReadingMode.routertable:
+                        _routerTable.Add(new RouterTableEntry(content[0].Trim(), content[1].Trim(), content[2].Trim(),
+                            content[3].Trim()));
+                        AnsiConsole.MarkupLine($"Added to router table [yellow]{content[0]}[/] {_routerTable.Last()}");
+                        break;
+                }
+            }
+        }
     }
 }
