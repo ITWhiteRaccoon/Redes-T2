@@ -1,18 +1,36 @@
-﻿namespace Simulador;
+﻿using System.Buffers;
+
+namespace Simulador;
 
 public class Node
 {
-    public Port Port { get; }
+    public string Name { get; }
+    public string Ip { get; }
+    public string Mask { get; }
     public string Gateway { get; }
+    public Dictionary<string, string> ArpTable { get; }
 
-    public Node(string mac, string ip, string gateway)
+    public Node(string name, string ip, string mask, string gateway)
     {
-        Port = new Port(mac.ToLower(), ip);
+        Name = name;
+        Ip = ip;
+        Mask = mask;
         Gateway = gateway;
+        ArpTable = new Dictionary<string, string>();
+    }  
+    private void ReceivePackage(Package p)
+    {
+        if (p.DstIp==Ip)
+        {
+            if (p.RequestType==RequestType.ArpRequest)
+            {
+                
+            }
+        }
     }
 
     public override string ToString()
     {
-        return $"(Port: {Port}, Gateway: {Gateway})";
+        return $"(Name: {Name}, Ip: {Ip}, Mask: {Mask}, Gateway: {Gateway})";
     }
 }

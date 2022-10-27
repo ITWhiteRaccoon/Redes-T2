@@ -8,25 +8,6 @@ public class Simulator
     private Dictionary<string, Router> _routers;
     private List<RouterTableEntry> _routerTable;
 
-
-    private static class Messages
-    {
-        public static string ArpRequest =
-            "[yellow]Note[/] over [yellow]{0}[/] : [blue]ARP Request[/]<br/>Who has [green]{1}[/]? Tell [green]{2}[/]";
-
-        public static string ArpReply =
-            "[yellow]{0}[/] ->> [yellow]{1}[/] : [blue]ARP Reply[/]<br/>[green]{2}[/] is at [green]{3}[/]";
-
-        public static string ICMPEchoRequest =
-            "[yellow]{0}[/] ->> [yellow]{1}[/] : [blue]ICMP Echo Request[/]<br/>src=[green]{2}[/] dst=[green]{3}[/] ttl=[green]{4}[/]";
-
-        public static string ICMPEchoReply =
-            "[yellow]{0}[/] ->> [yellow]{1}[/] : [blue]ICMP Echo Reply[/]<br/>src=[green]{2}[/] dst=[green]{3}[/] ttl=[green]{4}[/]";
-
-        public static string ICMPTimeExceeded =
-            "[yellow]{0}[/] ->> [yellow]{1}[/] : [blue]ICMP Time Exceeded[/]<br/>src=[green]{2}[/] dst=[green]{3}[/] ttl=[green]{4}[/]";
-    }
-
     public Simulator(string topologyFilePath)
     {
         _nodes = new Dictionary<string, Node>();
@@ -34,7 +15,7 @@ public class Simulator
         _routerTable = new List<RouterTableEntry>();
 
         var file = File.ReadAllLines(topologyFilePath);
-        var currentMode = ReadingMode.node;
+        var currentMode = ReadingMode.Node;
 
         for (var i = 0; i < file.Length; i++)
         {
@@ -52,10 +33,12 @@ public class Simulator
                 var content = line.Split(',');
                 switch (currentMode)
                 {
-                    case ReadingMode.node:
-                        _nodes[content[0].Trim()] = new Node(content[1].Trim(), content[2].Trim(), content[3].Trim());
+                    case ReadingMode.Node:
+                        var ip = content[2].Trim().Split('/');
+                        _nodes[content[1].Trim()] = new Node(content[0].Trim(), ip[0].Trim(), ip[1].Trim(),
+                            content[3].Trim());
                         break;
-                    case ReadingMode.router:
+                    /*case ReadingMode.router:
                         var numOfPorts = int.Parse(content[1].Trim());
                         var ports = new Port[numOfPorts];
                         for (var j = 0; j < numOfPorts; j++)
@@ -68,7 +51,7 @@ public class Simulator
                     case ReadingMode.routertable:
                         _routerTable.Add(new RouterTableEntry(content[0].Trim(), content[1].Trim(), content[2].Trim(),
                             content[3].Trim()));
-                        break;
+                        break;*/
                     default:
                         AnsiConsole.MarkupLine("How did you get here? This topology file must be [red]invalid[/].");
                         break;
@@ -79,9 +62,23 @@ public class Simulator
 #if DEBUG
         AnsiConsole.MarkupLine("Finished configuration:");
         PrintNodes();
-        PrintRouters();
-        PrintRouterTable();
+        // PrintRouters();
+        // PrintRouterTable();
 #endif
+    }
+
+    private void SendPackage(Package p)
+    {
+        if (p.DstMac=="ff:ff:ff:ff:")
+        {
+            foreach (var node in _nodes)
+            {
+                if (node.Value.Ip == p.DstIp)
+                {
+                    node.Value.ReceivePackage(p);
+                }
+            }
+        }
     }
 
     public void Ping(string srcName, string dstName)
@@ -89,7 +86,7 @@ public class Simulator
         var srcNode = _nodes[srcName];
         var dstNode = _nodes[dstName];
 
-        AnsiConsole.MarkupLine(string.Format(Messages.ArpRequest, srcName, dstNode.Port.Ip, srcNode.Port.Ip));
+        //AnsiConsole.MarkupLine(string.Format(Messages.ArpRequest, srcName, dstNode.Port.Ip, srcNode.Port.Ip));
     }
 
     public void Traceroute(string srcName, string dstName)
@@ -111,17 +108,18 @@ public class Simulator
         table.AddColumn("Node");
         table.AddColumn("MAC");
         table.AddColumn("IP");
+        table.AddColumn("Mask");
         table.AddColumn("Gateway");
 
         foreach (var entry in _nodes)
         {
-            table.AddRow(entry.Key, entry.Value.Port.Mac, entry.Value.Port.Ip, entry.Value.Gateway);
+            table.AddRow(entry.Value.Name, entry.Key, entry.Value.Ip, entry.Value.Mask, entry.Value.Gateway);
         }
 
         AnsiConsole.Write(table);
     }
 
-    public void PrintRouters()
+    /*public void PrintRouters()
     {
         var table = new Table
         {
@@ -175,5 +173,5 @@ public class Simulator
         }
 
         AnsiConsole.Write(table);
-    }
+    }*/
 }

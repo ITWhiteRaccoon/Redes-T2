@@ -19,10 +19,10 @@ public class Program : Command<Program.Settings>
         var simulator = new Simulator(settings.TopologyFilePath);
         switch (settings.Command)
         {
-            case CommandType.ping:
+            case CommandType.Ping:
                 simulator.Ping(settings.Source, settings.Destination);
                 break;
-            case CommandType.traceroute:
+            case CommandType.Traceroute:
                 simulator.Traceroute(settings.Source, settings.Destination);
                 break;
             default:

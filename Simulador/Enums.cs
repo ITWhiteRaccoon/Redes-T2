@@ -1,14 +1,23 @@
 ﻿namespace Simulador;
 
+public enum RequestType
+{
+    ArpRequest,
+    ArpReply,
+    IcmpEchoRequest,
+    IcmpEchoReply,
+    IcmpTimeExceeded
+}
+
 public enum CommandType
 {
-    ping,
-    traceroute
+    Ping,
+    Traceroute
 }
 
 public enum ReadingMode
 {
-    node,
-    router,
-    routertable
+    Node,
+    Router,
+    Routertable
 }

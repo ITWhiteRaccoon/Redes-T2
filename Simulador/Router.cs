@@ -3,6 +3,7 @@
 public class Router
 {
     public Port[] Ports { get; }
+    public RouterTableEntry[] RoutingTable { get; }
 
     public int NumberOfPorts => Ports.Length;
 
