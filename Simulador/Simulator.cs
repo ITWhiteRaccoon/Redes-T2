@@ -8,18 +8,24 @@ public class Simulator
     private Dictionary<string, Router> _routers;
     private List<RouterTableEntry> _routerTable;
 
-    /*
-    private string ArpRequest = $"Note over {srcName} : ARP Request<br/>Who has {dstIP}? Tell {srcIP}";
-    private string ArpReply = $"{srcName} ->> {dstName} : ARP Reply<br/>{srcIP} is at {srcMAC}";
-    private string ICMPEchoRequest = $"{srcName} ->> {dstName} : ICMP Echo Request<br/>src={srcIP} dst={dstIP} ttl={TTL}";
-    private string ICMPEchoReply = $"{srcName} ->> {dstName} : ICMP Echo Reply<br/>src={srcIP} dst={dstIP} ttl={TTL}";
-    private string ICMPTimeExceeded = $"{srcName} ->> {dstName} : ICMP Time Exceeded<br/>src={srcIP} dst={dstIP} ttl={TTL}";
-    */
-    private string ArpRequest = "[yellow]Note[/] over [yellow]{0}[/] : [blue]ARP Request[/]<br/>Who has {1}? Tell {2}";
-    private string ArpReply = "[yellow]{0}[/] ->> [yellow]{1}[/] : [blue]ARP Reply[/]<br/>{2} is at {3}";
-    private string ICMPEchoRequest = "[yellow]{0}[/] ->> [yellow]{1}[/] : [blue]ICMP Echo Request[/]<br/>src={2} dst={3} ttl={4}";
-    private string ICMPEchoReply = "[yellow]{0}[/] ->> [yellow]{1}[/] : [blue]ICMP Echo Reply[/]<br/>src={2} dst={3} ttl={4}";
-    private string ICMPTimeExceeded = "[yellow]{0}[/] ->> [yellow]{1}[/] : [blue]ICMP Time Exceeded[/]<br/>src={2} dst={3} ttl={4}";
+
+    private static class Messages
+    {
+        public static string ArpRequest =
+            "[yellow]Note[/] over [yellow]{0}[/] : [blue]ARP Request[/]<br/>Who has [green]{1}[/]? Tell [green]{2}[/]";
+
+        public static string ArpReply =
+            "[yellow]{0}[/] ->> [yellow]{1}[/] : [blue]ARP Reply[/]<br/>[green]{2}[/] is at [green]{3}[/]";
+
+        public static string ICMPEchoRequest =
+            "[yellow]{0}[/] ->> [yellow]{1}[/] : [blue]ICMP Echo Request[/]<br/>src=[green]{2}[/] dst=[green]{3}[/] ttl=[green]{4}[/]";
+
+        public static string ICMPEchoReply =
+            "[yellow]{0}[/] ->> [yellow]{1}[/] : [blue]ICMP Echo Reply[/]<br/>src=[green]{2}[/] dst=[green]{3}[/] ttl=[green]{4}[/]";
+
+        public static string ICMPTimeExceeded =
+            "[yellow]{0}[/] ->> [yellow]{1}[/] : [blue]ICMP Time Exceeded[/]<br/>src=[green]{2}[/] dst=[green]{3}[/] ttl=[green]{4}[/]";
+    }
 
     public Simulator(string topologyFilePath)
     {
@@ -79,6 +85,14 @@ public class Simulator
     }
 
     public void Ping(string srcName, string dstName)
+    {
+        var srcNode = _nodes[srcName];
+        var dstNode = _nodes[dstName];
+
+        AnsiConsole.MarkupLine(string.Format(Messages.ArpRequest, srcName, dstNode.Port.Ip, srcNode.Port.Ip));
+    }
+
+    public void Traceroute(string srcName, string dstName)
     {
         var srcNode = _nodes[srcName];
         var dstNode = _nodes[dstName];
