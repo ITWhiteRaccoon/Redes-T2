@@ -8,15 +8,16 @@ namespace Simulador;
 
 public class Simulator
 {
-    private Dictionary<string, Node> _nodes;
+    private static PhysicalAddress BroadcastMac = PhysicalAddress.Parse("FF-FF-FF-FF-FF-FF");
+    private Dictionary<PhysicalAddress, Node> _nodes;
     private Dictionary<string, Router> _routers;
     private List<RouterTableEntry> _routerTable;
 
     public Simulator(string topologyFilePath)
     {
-        _nodes = new Dictionary<string, Node>();
-        _routers = new Dictionary<string, Router>();
-        _routerTable = new List<RouterTableEntry>();
+        _nodes = new Dictionary<PhysicalAddress, Node>();
+        //_routers = new Dictionary<string, Router>();
+        //_routerTable = new List<RouterTableEntry>();
 
         var file = File.ReadAllLines(topologyFilePath);
         var currentMode = ReadingMode.Node;
@@ -26,7 +27,7 @@ public class Simulator
             var line = file[i].Trim();
             if (line.StartsWith('#'))
             {
-                currentMode = Enum.Parse<ReadingMode>(line[1..].ToLower());
+                currentMode = Enum.Parse<ReadingMode>(line[1..], true);
 
                 AnsiConsole.MarkupLine($"Reading [yellow]{currentMode}[/] configuration");
             }
@@ -36,7 +37,8 @@ public class Simulator
                 switch (currentMode)
                 {
                     case ReadingMode.Node:
-                        _nodes[content[0].Trim()] = new Node(
+                        _nodes[PhysicalAddress.Parse(content[1].Trim())] = new Node(
+                            content[0].Trim(),
                             PhysicalAddress.Parse(content[1].Trim()),
                             IPAddressRange.Parse(content[2].Trim()),
                             IPAddress.Parse(content[3].Trim()));
@@ -70,37 +72,45 @@ public class Simulator
 
     private void SendPackage(Package p)
     {
-        if (p.DstMac == "ff:ff:ff:ff:")
-        {
-            foreach (var node in _nodes)
-            {
-                if (node.Value.Ip == p.DstIp)
-                {
-                    node.Value.ReceivePackage(p);
-                }
-            }
-        }
     }
 
     public void Ping(string srcName, string dstName)
     {
-        var srcNode = _nodes[srcName];
-        var dstNode = _nodes[dstName];
+        Node srcNode = null, dstNode = null;
+
 
         //AnsiConsole.MarkupLine(string.Format(Messages.ArpRequest, srcName, dstNode.Port.Ip, srcNode.Port.Ip));
     }
 
     public void Traceroute(string srcName, string dstName)
     {
-        var srcNode = _nodes[srcName];
-        var dstNode = _nodes[dstName];
+        //var srcNode = _nodes[srcName];
+        //var dstNode = _nodes[dstName];
 
-        AnsiConsole.MarkupLine($"");
+        //AnsiConsole.MarkupLine($"");
     }
 
-    public static bool ValidMacAddress(string mac)
+    public Node[] GetNodes(string srcName, string dstName)
     {
-        return Regex.IsMatch(mac, @"^[a-f0-9]{2}(:[a-f0-9]{2}){5}$");
+        Node[] nodes = new Node[2];
+        foreach (var node in _nodes)
+        {
+            if (node.Value.Name == srcName)
+            {
+                nodes[0] = node.Value;
+            }
+            else if (node.Value.Name == dstName)
+            {
+                nodes[1] = node.Value;
+            }
+
+            if (nodes[0] != null && nodes[1] != null)
+            {
+                break;
+            }
+        }
+
+        return nodes;
     }
 
     public void PrintNodes()
@@ -114,12 +124,15 @@ public class Simulator
         table.AddColumn("Node");
         table.AddColumn("MAC");
         table.AddColumn("IP");
-        table.AddColumn("Mask");
         table.AddColumn("Gateway");
 
         foreach (var entry in _nodes)
         {
-            table.AddRow(entry.Value.Mac, entry.Key, entry.Value.Ip, entry.Value.Mask, entry.Value.Gateway);
+            table.AddRow(
+                entry.Value.Name,
+                BitConverter.ToString(entry.Value.Mac.GetAddressBytes()),
+                entry.Value.Ip.ToCidrString(),
+                entry.Value.Gateway.ToString());
         }
 
         AnsiConsole.Write(table);
