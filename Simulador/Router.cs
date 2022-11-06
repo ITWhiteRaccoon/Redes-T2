@@ -2,18 +2,26 @@
 
 public class Router
 {
-    public Port[] Ports { get; }
+    public int NumberOfPorts { get; }
+    public string[] PortMac { get; }
+    public string[] PortIp { get; }
     public RouterTableEntry[] RoutingTable { get; }
 
-    public int NumberOfPorts => Ports.Length;
+    /// Maps known IP addresses to their MAC addresses
+    public Dictionary<string, string> ArpTable { get; }
 
-    public Router(Port[] ports)
+
+    public Router(int numberOfPorts, string[] portMac, string[] portIp, RouterTableEntry[] routingTable)
     {
-        Ports = ports;
+        NumberOfPorts = numberOfPorts;
+        PortMac = portMac;
+        PortIp = portIp;
+        RoutingTable = routingTable;
+        ArpTable = new Dictionary<string, string>();
     }
 
     public override string ToString()
     {
-        return $"(Ports: {string.Join(',', (IEnumerable<Port>)Ports)})";
+        return $"";
     }
 }

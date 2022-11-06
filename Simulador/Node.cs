@@ -1,36 +1,27 @@
-﻿using System.Buffers;
+﻿using System.Net;
+using System.Net.NetworkInformation;
+using NetTools;
 
 namespace Simulador;
 
 public class Node
 {
-    public string Name { get; }
-    public string Ip { get; }
-    public string Mask { get; }
-    public string Gateway { get; }
-    public Dictionary<string, string> ArpTable { get; }
+    public PhysicalAddress Mac { get; }
+    public IPAddressRange Ip { get; }
+    public IPAddress Gateway { get; }
+    public Dictionary<IPAddress, PhysicalAddress> ArpTable { get; }
 
-    public Node(string name, string ip, string mask, string gateway)
+    public Node(PhysicalAddress mac, IPAddressRange ip, IPAddress gateway)
     {
-        Name = name;
+        Mac = mac;
         Ip = ip;
-        Mask = mask;
-        Gateway = gateway;
-        ArpTable = new Dictionary<string, string>();
-    }  
-    private void ReceivePackage(Package p)
-    {
-        if (p.DstIp==Ip)
-        {
-            if (p.RequestType==RequestType.ArpRequest)
-            {
-                
-            }
-        }
+        Gateway =gateway;
+        ArpTable = new Dictionary<IPAddress, PhysicalAddress>();
+        ArpTable[IPAddress.Parse("192.168.1.0")] = PhysicalAddress.Parse("00:00:00:00:00:01");
     }
 
     public override string ToString()
     {
-        return $"(Name: {Name}, Ip: {Ip}, Mask: {Mask}, Gateway: {Gateway})";
+        return $"(MAC: {Mac}, IP: {Ip}, Gateway: {Gateway})";
     }
 }

@@ -1,4 +1,8 @@
-﻿using Spectre.Console;
+﻿using System.Net;
+using System.Net.NetworkInformation;
+using System.Text.RegularExpressions;
+using NetTools;
+using Spectre.Console;
 
 namespace Simulador;
 
@@ -24,9 +28,7 @@ public class Simulator
             {
                 currentMode = Enum.Parse<ReadingMode>(line[1..].ToLower());
 
-#if DEBUG
                 AnsiConsole.MarkupLine($"Reading [yellow]{currentMode}[/] configuration");
-#endif
             }
             else
             {
@@ -34,9 +36,10 @@ public class Simulator
                 switch (currentMode)
                 {
                     case ReadingMode.Node:
-                        var ip = content[2].Trim().Split('/');
-                        _nodes[content[1].Trim()] = new Node(content[0].Trim(), ip[0].Trim(), ip[1].Trim(),
-                            content[3].Trim());
+                        _nodes[content[0].Trim()] = new Node(
+                            PhysicalAddress.Parse(content[1].Trim()),
+                            IPAddressRange.Parse(content[2].Trim()),
+                            IPAddress.Parse(content[3].Trim()));
                         break;
                     /*case ReadingMode.router:
                         var numOfPorts = int.Parse(content[1].Trim());
@@ -59,17 +62,15 @@ public class Simulator
             }
         }
 
-#if DEBUG
         AnsiConsole.MarkupLine("Finished configuration:");
         PrintNodes();
         // PrintRouters();
         // PrintRouterTable();
-#endif
     }
 
     private void SendPackage(Package p)
     {
-        if (p.DstMac=="ff:ff:ff:ff:")
+        if (p.DstMac == "ff:ff:ff:ff:")
         {
             foreach (var node in _nodes)
             {
@@ -97,6 +98,11 @@ public class Simulator
         AnsiConsole.MarkupLine($"");
     }
 
+    public static bool ValidMacAddress(string mac)
+    {
+        return Regex.IsMatch(mac, @"^[a-f0-9]{2}(:[a-f0-9]{2}){5}$");
+    }
+
     public void PrintNodes()
     {
         var table = new Table
@@ -113,7 +119,7 @@ public class Simulator
 
         foreach (var entry in _nodes)
         {
-            table.AddRow(entry.Value.Name, entry.Key, entry.Value.Ip, entry.Value.Mask, entry.Value.Gateway);
+            table.AddRow(entry.Value.Mac, entry.Key, entry.Value.Ip, entry.Value.Mask, entry.Value.Gateway);
         }
 
         AnsiConsole.Write(table);
