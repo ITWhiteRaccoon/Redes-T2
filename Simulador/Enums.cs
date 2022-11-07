@@ -19,5 +19,5 @@ public enum ReadingMode
 {
     Node,
     Router,
-    Routertable
+    RouterTable
 }

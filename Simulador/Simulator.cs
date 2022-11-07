@@ -11,13 +11,11 @@ public class Simulator
     private static readonly PhysicalAddress BroadcastMac = PhysicalAddress.Parse("FF-FF-FF-FF-FF-FF");
     private Dictionary<PhysicalAddress, Node> _nodes;
     private Dictionary<string, Router> _routers;
-    private List<RouterTableEntry> _routerTable;
 
     public Simulator(string topologyFilePath)
     {
         _nodes = new Dictionary<PhysicalAddress, Node>();
-        //_routers = new Dictionary<string, Router>();
-        //_routerTable = new List<RouterTableEntry>();
+        _routers = new Dictionary<string, Router>();
 
         var file = File.ReadAllLines(topologyFilePath);
         var currentMode = ReadingMode.Node;
@@ -45,20 +43,23 @@ public class Simulator
                             int.Parse(ip[1]),
                             IPAddress.Parse(content[3].Trim()));
                         break;
-                    /*case ReadingMode.router:
+                    case ReadingMode.Router:
                         var numOfPorts = int.Parse(content[1].Trim());
-                        var ports = new Port[numOfPorts];
+                        var portMac = new PhysicalAddress[numOfPorts];
+                        var portIp = new IPAddress[numOfPorts];
                         for (var j = 0; j < numOfPorts; j++)
                         {
-                            ports[j] = new Port(content[j * 2 + 2].Trim(), content[j * 2 + 3].Trim());
+                            portMac[j] = PhysicalAddress.Parse(content[j * 2 + 2].Trim());
+                            portIp[j] = IPAddress.Parse(content[j * 2 + 3].Trim().Split('/')[0]);
                         }
 
-                        _routers[content[0].Trim()] = new Router(ports);
+                        _routers[content[0].Trim()] = new Router(content[0].Trim(), numOfPorts, portMac, portIp);
                         break;
-                    case ReadingMode.routertable:
-                        _routerTable.Add(new RouterTableEntry(content[0].Trim(), content[1].Trim(), content[2].Trim(),
-                            content[3].Trim()));
-                        break;*/
+                    case ReadingMode.RouterTable:
+                        _routers[content[0].Trim()].RouterTable.Add(new RouterTableEntry(
+                            IPAddressRange.Parse(content[1].Trim()), IPAddress.Parse(content[2].Trim()),
+                            int.Parse(content[3].Trim())));
+                        break;
                     default:
                         AnsiConsole.MarkupLine("How did you get here? This topology file must be [red]invalid[/].");
                         break;
@@ -68,12 +69,8 @@ public class Simulator
 
         AnsiConsole.MarkupLine("Finished configuration:");
         PrintNodes();
-        // PrintRouters();
-        // PrintRouterTable();
-    }
-
-    private void SendPackage(Packet p)
-    {
+        //PrintRouters();
+        //PrintRouterTable();
     }
 
     public void Ping(string srcName, string dstName)
@@ -107,7 +104,7 @@ public class Simulator
                     var newPacket = new Packet
                     {
                         RequestType = RequestType.ArpReply, SrcIp = node.Ip, DstIp = p.SrcIp, SrcMac = node.Mac,
-                        DstMac = p.SrcMac, TTL = p.TTL - 1
+                        DstMac = p.SrcMac, TTL = p.TTL
                     };
                     AnsiConsole.MarkupLine(string.Format(Messages.ArpReply, node.Name, pingSrc.Name, node.Ip,
                         BitConverter.ToString(node.Mac.GetAddressBytes()).Replace('-', ':')));
@@ -159,18 +156,14 @@ public class Simulator
                 }
             }
         }
-
-        //AnsiConsole.MarkupLine(string.Format(Messages.ArpRequest, srcName, dstNode.Port.Ip, srcNode.Port.Ip));
     }
 
     public void Traceroute(string srcName, string dstName)
     {
         var nodes = GetNodes(srcName, dstName);
-
-        //AnsiConsole.MarkupLine($"");
     }
 
-    public Node[] GetNodes(string srcName, string dstName)
+    private Node[] GetNodes(string srcName, string dstName)
     {
         var nodes = new Node[2];
         foreach (var node in _nodes)

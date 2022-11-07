@@ -1,12 +1,11 @@
 ﻿using System.Net;
 using System.Net.NetworkInformation;
-using NetTools;
 
 namespace Simulador;
 
 public class Node
 {
-    public string Name { get; set; }
+    public string Name { get; }
     public PhysicalAddress Mac { get; }
     public IPAddress Ip { get; }
     public int Mask { get; }

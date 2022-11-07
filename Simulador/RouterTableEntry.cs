@@ -1,12 +1,15 @@
-﻿namespace Simulador;
+﻿using System.Net;
+using NetTools;
+
+namespace Simulador;
 
 public class RouterTableEntry
 {
-    public string Destination { get; }
-    public string NextHop { get; }
+    public IPAddressRange Destination { get; }
+    public IPAddress NextHop { get; }
     public int Port { get; }
 
-    public RouterTableEntry(string destination, string nextHop, int port)
+    public RouterTableEntry(IPAddressRange destination, IPAddress nextHop, int port)
     {
         Destination = destination;
         NextHop = nextHop;
