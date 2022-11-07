@@ -8,12 +8,12 @@ public static class Messages
     public static string ArpReply =
         "[yellow]{0}[/] ->> [yellow]{1}[/] : [blue]ARP Reply[/]<br/>[green]{2}[/] is at [green]{3}[/]";
 
-    public static string ICMPEchoRequest =
+    public static string IcmpEchoRequest =
         "[yellow]{0}[/] ->> [yellow]{1}[/] : [blue]ICMP Echo Request[/]<br/>src=[green]{2}[/] dst=[green]{3}[/] ttl=[green]{4}[/]";
 
-    public static string ICMPEchoReply =
+    public static string IcmpEchoReply =
         "[yellow]{0}[/] ->> [yellow]{1}[/] : [blue]ICMP Echo Reply[/]<br/>src=[green]{2}[/] dst=[green]{3}[/] ttl=[green]{4}[/]";
 
-    public static string ICMPTimeExceeded =
+    public static string IcmpTimeExceeded =
         "[yellow]{0}[/] ->> [yellow]{1}[/] : [blue]ICMP Time Exceeded[/]<br/>src=[green]{2}[/] dst=[green]{3}[/] ttl=[green]{4}[/]";
 }

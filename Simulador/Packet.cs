@@ -3,7 +3,7 @@ using System.Net.NetworkInformation;
 
 namespace Simulador;
 
-public class Package
+public class Packet
 {
     public RequestType RequestType { get; set; }
     public PhysicalAddress SrcMac { get; set; }
@@ -11,4 +11,9 @@ public class Package
     public IPAddress SrcIp { get; set; }
     public IPAddress DstIp { get; set; }
     public int TTL { get; set; }
+
+    public Packet(int ttl = 8)
+    {
+        TTL = ttl;
+    }
 }

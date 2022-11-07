@@ -21,7 +21,6 @@ public class Node
         Mask = mask;
         Gateway = gateway;
         ArpTable = new Dictionary<IPAddress, PhysicalAddress>();
-        ArpTable[IPAddress.Parse("192.168.1.0")] = PhysicalAddress.Parse("00:00:00:00:00:01");
     }
 
     public override string ToString()
