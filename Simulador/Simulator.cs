@@ -37,10 +37,12 @@ public class Simulator
                 switch (currentMode)
                 {
                     case ReadingMode.Node:
+                        var ip = content[2].Trim().Split("/");
                         _nodes[PhysicalAddress.Parse(content[1].Trim())] = new Node(
                             content[0].Trim(),
                             PhysicalAddress.Parse(content[1].Trim()),
-                            IPAddressRange.Parse(content[2].Trim()),
+                            IPAddress.Parse(ip[0]),
+                            int.Parse(ip[1]),
                             IPAddress.Parse(content[3].Trim()));
                         break;
                     /*case ReadingMode.router:
@@ -76,23 +78,36 @@ public class Simulator
 
     public void Ping(string srcName, string dstName)
     {
-        Node srcNode = null, dstNode = null;
+        var nodes = GetNodes(srcName, dstName);
+        var src = nodes[0];
+        var dst = nodes[1];
 
+        var p = new Package { SrcIp = src.Ip, DstIp = dst.Ip, SrcMac = src.Mac };
+        while (p.TTL > 0)
+        {
+            if (!src.ArpTable.ContainsKey(dst.Ip))
+            {
+                p.RequestType = RequestType.ArpRequest;
+                AnsiConsole.MarkupLine(string.Format(Messages.ArpRequest, srcName, dst.Ip, src.Ip));
+            }
+            else
+            {
+            }
+        }
 
         //AnsiConsole.MarkupLine(string.Format(Messages.ArpRequest, srcName, dstNode.Port.Ip, srcNode.Port.Ip));
     }
 
     public void Traceroute(string srcName, string dstName)
     {
-        //var srcNode = _nodes[srcName];
-        //var dstNode = _nodes[dstName];
+        var nodes = GetNodes(srcName, dstName);
 
         //AnsiConsole.MarkupLine($"");
     }
 
     public Node[] GetNodes(string srcName, string dstName)
     {
-        Node[] nodes = new Node[2];
+        var nodes = new Node[2];
         foreach (var node in _nodes)
         {
             if (node.Value.Name == srcName)
@@ -131,7 +146,7 @@ public class Simulator
             table.AddRow(
                 entry.Value.Name,
                 BitConverter.ToString(entry.Value.Mac.GetAddressBytes()),
-                entry.Value.Ip.ToCidrString(),
+                $"{entry.Value.Ip}/{entry.Value.Mask}",
                 entry.Value.Gateway.ToString());
         }
 

@@ -11,14 +11,4 @@ public class Package
     public IPAddress SrcIp { get; set; }
     public IPAddress DstIp { get; set; }
     public int TTL { get; set; }
-
-    public Package(RequestType requestType, PhysicalAddress srcMac, PhysicalAddress dstMac, IPAddress srcIp, IPAddress dstIp, int ttl = 8)
-    {
-        RequestType = requestType;
-        SrcMac = srcMac;
-        DstMac = dstMac;
-        SrcIp = srcIp;
-        DstIp = dstIp;
-        TTL = ttl;
-    }
 }
