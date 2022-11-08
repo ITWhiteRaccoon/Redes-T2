@@ -79,20 +79,30 @@ public class Simulator
         var pingSrc = nodes[0];
         var pingDst = nodes[1];
 
-        var p = new Packet { SrcIp = pingSrc.Ip, DstIp = pingDst.Ip, SrcMac = pingSrc.Mac };
-        if (!pingSrc.ArpTable.ContainsKey(pingDst.Ip))
+        //Source IP and MAC will always start with the source node
+        //Destination IP will be the destination node's IP if it's in the same subnet, otherwise it will be the gateway
+        var p = new Packet
         {
+            SrcIp = pingSrc.Ip, SrcMac = pingSrc.Mac,
+            DstIp = new IPAddressRange(pingSrc.Ip, pingSrc.Mask).Contains(pingDst.Ip) ? pingDst.Ip : pingSrc.Gateway
+        }; 
+
+        if (!pingSrc.ArpTable.ContainsKey(p.DstIp))
+        {
+            //If the source node doesn't have the destination node's IP in its ARP table, it will send an ARP request
             p.RequestType = RequestType.ArpRequest;
-            AnsiConsole.MarkupLine(string.Format(Messages.ArpRequest, pingSrc.Name, pingDst.Ip, pingSrc.Ip));
+            AnsiConsole.MarkupLine(string.Format(Messages.ArpRequest, pingSrc.Name, p.DstIp, p.SrcIp));
         }
         else
         {
+            //If the source node has the destination node's IP in its ARP table, it will send an ICMP request
             p.RequestType = RequestType.IcmpEchoRequest;
             p.DstMac = pingSrc.ArpTable[pingDst.Ip];
             AnsiConsole.MarkupLine(string.Format(Messages.IcmpEchoRequest, pingSrc.Name, pingDst.Name, pingSrc.Ip,
                 pingDst.Ip, p.TTL));
         }
 
+        //After setting the initial packet, it will be forwarded to the destination and be treated accordingly
         while (p.TTL > 0)
         {
             switch (p.RequestType)
