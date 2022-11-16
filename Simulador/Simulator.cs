@@ -15,6 +15,8 @@ public class Simulator
     private Dictionary<PhysicalAddress, Router> _routersByMac;
     private Dictionary<IPAddress, Router> _routersByIp;
     private Dictionary<string, Router> _routersByName;
+    private Node _commandSrc;
+    private Node _commandDst;
 
     public Simulator(string topologyFilePath)
     {
@@ -43,25 +45,30 @@ public class Simulator
                 switch (currentMode)
                 {
                     case ReadingMode.Node:
+                    {
                         var ip = content[2].Trim().Split("/");
                         var node = new Node(
                             content[0].Trim(),
-                            new Port(PhysicalAddress.Parse(content[1].Trim()), IPAddress.Parse(ip[0])),
-                            int.Parse(ip[1]),
+                            new Port(PhysicalAddress.Parse(content[1].Trim()), IPAddress.Parse(ip[0]),
+                                int.Parse(ip[1])),
                             IPAddress.Parse(content[3].Trim())
                         );
                         _nodesByMac[node.Port.Mac] = node;
                         _nodesByIp[node.Port.Ip] = node;
                         _nodesByName[node.Name] = node;
                         break;
+                    }
                     case ReadingMode.Router:
+                    {
                         var numOfPorts = int.Parse(content[1].Trim());
                         var ports = new List<Port>(numOfPorts);
                         for (var j = 0; j < numOfPorts; j++)
                         {
+                            var ip = content[j * 2 + 3].Trim().Split('/');
                             ports.Add(new Port(
                                 PhysicalAddress.Parse(content[j * 2 + 2].Trim()),
-                                IPAddress.Parse(content[j * 2 + 3].Trim().Split('/')[0])
+                                IPAddress.Parse(ip[0]),
+                                int.Parse(ip[1])
                             ));
                         }
 
@@ -74,13 +81,16 @@ public class Simulator
                         }
 
                         break;
+                    }
                     case ReadingMode.RouterTable:
+                    {
                         _routersByName[content[0].Trim()].RouterTable.Add(new RouterTableEntry(
                             IPAddressRange.Parse(content[1].Trim()),
                             IPAddress.Parse(content[2].Trim()),
                             int.Parse(content[3].Trim())
                         ));
                         break;
+                    }
                     default:
                         AnsiConsole.MarkupLine("How did you get here? This topology file must be [red]invalid[/].");
                         break;
@@ -92,6 +102,21 @@ public class Simulator
         PrintNodes();
         //PrintRouters();
         //PrintRouterTable();
+    }
+
+    private INetworkDevice GetDevice(IPAddress ip)
+    {
+        return _nodesByIp.ContainsKey(ip) ? _nodesByIp[ip] : _routersByIp[ip];
+    }
+
+    private INetworkDevice GetDevice(PhysicalAddress mac)
+    {
+        return _nodesByMac.ContainsKey(mac) ? _nodesByMac[mac] : _routersByMac[mac];
+    }
+
+    private List<Node> GetAllNodes()
+    {
+        return _nodesByName.Values.ToList();
     }
 
     private Node? GetNode(PhysicalAddress mac)
@@ -107,6 +132,11 @@ public class Simulator
     private Node? GetNode(string name)
     {
         return _nodesByName.TryGetValue(name, out var node) ? node : null;
+    }
+
+    private List<Router> GetAllRouters()
+    {
+        return _routersByName.Values.ToList();
     }
 
     private Router? GetRouter(PhysicalAddress mac)
@@ -126,33 +156,32 @@ public class Simulator
 
     public void Ping(string srcName, string dstName)
     {
-        var nodes = GetNodes(srcName, dstName);
-        var commandSrc = nodes[0];
-        var commandDst = nodes[1];
+        _commandSrc = GetNode(srcName);
+        _commandDst = GetNode(dstName);
 
         //Source IP and MAC will always start with the source node
         //Destination IP will be the destination node's IP if it's in the same subnet, otherwise it will be the gateway
         var p = new Packet
         {
-            SrcIp = commandSrc.Port.Ip, SrcMac = commandSrc.Port.Mac,
-            DstIp = new IPAddressRange(commandSrc.Port.Ip, commandSrc.Mask).Contains(commandDst.Port.Ip)
-                ? commandDst.Port.Ip
-                : commandSrc.Gateway
+            SrcIp = _commandSrc.Port.Ip, SrcMac = _commandSrc.Port.Mac,
+            DstIp = new IPAddressRange(_commandSrc.Port.Ip, _commandSrc.Port.Mask).Contains(_commandDst.Port.Ip)
+                ? _commandDst.Port.Ip
+                : _commandSrc.Gateway
         };
 
-        if (!commandSrc.ArpTable.ContainsKey(p.DstIp))
+        if (!_commandSrc.ArpTable.ContainsKey(p.DstIp))
         {
             //If the source node doesn't have the destination node's IP in its ARP table, it will send an ARP request
             p.RequestType = RequestType.ArpRequest;
-            AnsiConsole.MarkupLine(string.Format(Messages.ArpRequest, commandSrc.Name, p.DstIp, p.SrcIp));
+            AnsiConsole.MarkupLine(string.Format(Messages.ArpRequest, _commandSrc.Name, p.DstIp, p.SrcIp));
         }
         else
         {
             //If the source node has the destination node's IP in its ARP table, it will send an ICMP request
             p.RequestType = RequestType.IcmpEchoRequest;
-            p.DstMac = commandSrc.ArpTable[commandDst.Port.Ip];
-            AnsiConsole.MarkupLine(string.Format(Messages.IcmpEchoRequest, commandSrc.Name, commandDst.Name,
-                commandSrc.Port.Ip, commandDst.Port.Ip, p.TTL));
+            p.DstMac = _commandSrc.ArpTable[_commandDst.Port.Ip];
+            AnsiConsole.MarkupLine(string.Format(Messages.IcmpEchoRequest, _commandSrc.Name, _commandDst.Name,
+                _commandSrc.Port.Ip, _commandDst.Port.Ip, p.TTL));
         }
 
         var unfinished = true;
@@ -160,33 +189,52 @@ public class Simulator
         //After setting the initial packet, it will be forwarded to the destination and be treated accordingly
         while (p.TTL > 0 && unfinished)
         {
-            p = ProcessPackage(p, commandSrc, commandDst, out unfinished);
+            p = ProcessPackage(p, out unfinished);
         }
     }
 
-    private Packet ProcessPackage(Packet p, Node commandSrc, Node commandDst, out bool unfinished)
+    private Packet NewIcmpEchoRequest(Packet p)
+    {
+        var srcDevice = GetDevice(p.SrcIp);
+        var srcPort = srcDevice.GetPort(p.SrcIp);
+
+        var newP = new Packet
+        {
+            SrcIp = srcPort.Ip, SrcMac = srcPort.Mac,
+            DstIp = (new IPAddressRange(srcPort.Ip, srcPort.Mask).Contains(p.DstIp)
+                ? srcPort.Ip
+                : srcDevice.Gateway) ?? throw new InvalidOperationException()
+        };
+
+        if (srcDevice.ArpTable.ContainsKey(newP.DstIp))
+        {
+            newP.DstMac = srcDevice.ArpTable[newP.DstIp];
+        }
+    }
+
+    private Packet ProcessPackage(Packet p, out bool unfinished)
     {
         unfinished = true;
         switch (p.RequestType)
         {
             case RequestType.ArpRequest:
             {
-                p = ArpRequest(p, commandSrc, commandDst);
+                p = TreatArpRequest(p);
                 break;
             }
             case RequestType.ArpReply:
             {
-                p = ArpReply(p);
+                p = TreatArpReply(p);
                 break;
             }
             case RequestType.IcmpEchoRequest:
             {
-                p = IcmpEchoRequest(p);
+                p = TreatIcmpEchoRequest(p);
                 break;
             }
             case RequestType.IcmpEchoReply:
             {
-                if (p.DstMac.Equals(commandSrc.Port.Mac))
+                if (p.DstMac.Equals(_commandSrc.Port.Mac))
                 {
                     unfinished = false;
                     return p;
@@ -203,111 +251,65 @@ public class Simulator
         return p;
     }
 
-    private Packet NewArpRequest(Packet p, Node commandSrc, Node commandDst)
+    private Packet TreatArpRequest(Packet p)
     {
-        var isNode = _nodes.FirstOrDefault(x => x.Value.Port.Ip.Equals(p.DstIp)).Equals(null);
-        var nodePort = _nodes.First(x => x.Value.Port.Ip.Equals(p.DstIp)).Value.Port;
+        var netDevice = GetDevice(p.DstIp);
+        var port = netDevice.GetPort(p.DstIp);
 
+        netDevice.ArpTable[p.SrcIp] = p.SrcMac;
 
-        var routerPort = _routers.First(x => x.Value.Ports.Any(y => y.Ip.Equals(p.DstIp)));
-    }
-
-    private Packet ArpRequest(Packet p, Node commandSrc, Node commandDst)
-    {
-        var n = _nodes.FirstOrDefault(x => x.Value.Port.Ip.Equals(p.DstIp));
-        if (n.Key != null && n.Value != null)
+        var newPacket = new Packet
         {
-            var node = n.Value;
-            node.ArpTable[p.SrcIp] = p.SrcMac;
-            var newPacket = new Packet
-            {
-                RequestType = RequestType.ArpReply, SrcIp = node.Port.Ip, DstIp = p.SrcIp, SrcMac = node.Port.Mac,
-                DstMac = p.SrcMac, TTL = p.TTL
-            };
-            AnsiConsole.MarkupLine(string.Format(Messages.ArpReply, node.Name, commandSrc.Name, node.Port.Ip,
-                BitConverter.ToString(node.Port.Mac.GetAddressBytes()).Replace('-', ':')));
-            p = newPacket;
-        }
-        else
-        {
-            var r = _routers.FirstOrDefault(x => x.Value.Ports.Any(y => y.Ip.Equals(p.DstIp)));
-            if (r.Key != null && r.Value != null)
-            {
-                var router = r.Value;
-                var routerPort = router.Ports.First(x => x.Ip.Equals(p.DstIp));
-                router.ArpTable[p.SrcIp] = p.SrcMac;
-                var newPacket = new Packet
-                {
-                    RequestType = RequestType.ArpReply, SrcIp = routerPort.Ip, DstIp = p.SrcIp,
-                    SrcMac = routerPort.Mac, DstMac = p.SrcMac, TTL = p.TTL
-                };
-                AnsiConsole.MarkupLine(string.Format(Messages.ArpReply, router.Name, commandSrc.Name, routerPort.Ip,
-                    BitConverter.ToString(routerPort.Mac.GetAddressBytes()).Replace('-', ':')));
-                p = newPacket;
-            }
-        }
+            RequestType = RequestType.ArpReply, SrcIp = port.Ip, DstIp = p.SrcIp, SrcMac = port.Mac,
+            DstMac = p.SrcMac, TTL = p.TTL
+        };
 
+        AnsiConsole.MarkupLine(string.Format(Messages.ArpReply, netDevice.Name, _commandSrc.Name, port.Ip,
+            BitConverter.ToString(port.Mac.GetAddressBytes()).Replace('-', ':')));
+        p = newPacket;
         return p;
     }
 
-    private Packet ArpReply(Packet p)
+    private Packet TreatArpReply(Packet p)
     {
-        var packetSrc = _nodes[p.SrcMac];
-        var packetDst = _nodes[p.DstMac];
+        var packetSrc = GetDevice(p.SrcMac);
+        var packetDst = GetDevice(p.DstMac);
+        var srcPort = packetSrc.GetPort(p.SrcIp);
+        var dstPort = packetDst.GetPort(p.DstIp);
+
         packetDst.ArpTable[p.SrcIp] = p.SrcMac;
         var newP = new Packet
         {
-            RequestType = RequestType.IcmpEchoRequest, SrcIp = packetDst.Port.Ip, DstIp = packetSrc.Port.Ip,
-            SrcMac = packetDst.Port.Mac, DstMac = packetSrc.Port.Mac
+            RequestType = RequestType.IcmpEchoRequest, SrcIp = dstPort.Ip, DstIp = srcPort.Ip, SrcMac = dstPort.Mac,
+            DstMac = srcPort.Mac
         };
         p = newP;
-        AnsiConsole.MarkupLine(string.Format(Messages.IcmpEchoRequest, packetDst.Name, packetSrc.Name,
-            packetDst.Port.Ip, packetSrc.Port.Ip, p.TTL));
+        AnsiConsole.MarkupLine(string.Format(Messages.IcmpEchoRequest, packetDst.Name, packetSrc.Name, dstPort.Ip,
+            srcPort.Ip, p.TTL));
         return p;
     }
 
-    private Packet IcmpEchoRequest(Packet p)
+    private Packet TreatIcmpEchoRequest(Packet p)
     {
-        var packetSrc = _nodes[p.SrcMac];
-        var packetDst = _nodes[p.DstMac];
+        var packetSrc = GetDevice(p.SrcMac);
+        var packetDst = GetDevice(p.DstMac);
+        var srcPort = packetSrc.GetPort(p.SrcIp);
+        var dstPort = packetDst.GetPort(p.DstIp);
+
         packetDst.ArpTable[p.SrcIp] = p.SrcMac;
         var newP = new Packet
         {
-            RequestType = RequestType.IcmpEchoReply, SrcIp = packetDst.Port.Ip, DstIp = packetSrc.Port.Ip,
-            SrcMac = packetDst.Port.Mac, DstMac = packetSrc.Port.Mac
+            RequestType = RequestType.IcmpEchoRequest, SrcIp = dstPort.Ip, DstIp = srcPort.Ip, SrcMac = dstPort.Mac,
+            DstMac = srcPort.Mac
         };
         p = newP;
-        AnsiConsole.MarkupLine(string.Format(Messages.IcmpEchoReply, packetDst.Name, packetSrc.Name,
-            packetDst.Port.Ip, packetSrc.Port.Ip, p.TTL));
+        AnsiConsole.MarkupLine(string.Format(Messages.IcmpEchoReply, packetDst.Name, packetSrc.Name, dstPort.Ip,
+            srcPort.Ip, p.TTL));
         return p;
     }
 
     public void Traceroute(string srcName, string dstName)
     {
-        var nodes = GetNodes(srcName, dstName);
-    }
-
-    private Node[] GetNodes(string srcName, string dstName)
-    {
-        var nodes = new Node[2];
-        foreach (var node in _nodes)
-        {
-            if (node.Value.Name == srcName)
-            {
-                nodes[0] = node.Value;
-            }
-            else if (node.Value.Name == dstName)
-            {
-                nodes[1] = node.Value;
-            }
-
-            if (nodes[0] != null && nodes[1] != null)
-            {
-                break;
-            }
-        }
-
-        return nodes;
     }
 
     public void PrintNodes()
@@ -323,13 +325,13 @@ public class Simulator
         table.AddColumn("IP");
         table.AddColumn("Gateway");
 
-        foreach (var entry in _nodes)
+        foreach (var node in GetAllNodes())
         {
             table.AddRow(
-                entry.Value.Name,
-                BitConverter.ToString(entry.Value.Port.Mac.GetAddressBytes()).Replace('-', ':'),
-                $"{entry.Value.Port.Ip}/{entry.Value.Mask}",
-                entry.Value.Gateway.ToString());
+                node.Name,
+                BitConverter.ToString(node.Port.Mac.GetAddressBytes()).Replace('-', ':'),
+                $"{node.Port.Ip}/{node.Mask}",
+                node.Gateway.ToString());
         }
 
         AnsiConsole.Write(table);
