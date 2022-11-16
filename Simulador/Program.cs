@@ -20,7 +20,7 @@ public class Program : Command<Program.Settings>
         switch (settings.Command)
         {
             case CommandType.Ping:
-                simulator.Ping(settings.Source, settings.Destination);
+                simulator.NewPing(settings.Source, settings.Destination);
                 break;
             case CommandType.Traceroute:
                 simulator.Traceroute(settings.Source, settings.Destination);

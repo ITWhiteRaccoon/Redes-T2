@@ -193,6 +193,37 @@ public class Simulator
         }
     }
 
+    public void NewPing(string srcName, string dstName)
+    {
+        _commandSrc = GetNode(srcName);
+        _commandDst = GetNode(dstName);
+
+        var p = new Packet()
+        {
+            SrcIp = _commandSrc.Port.Ip, SrcMac = _commandSrc.Port.Mac,
+            DstIp = _commandDst.Port.Ip
+        };
+        NewIcmpEchoRequest(p);
+    }
+
+    private PhysicalAddress NewArpReply(Packet p)
+    {
+        var srcDevice = GetDevice(p.SrcIp);
+        var dstDevice = GetDevice(p.DstIp);
+        var dstPort = dstDevice.GetPort(p.DstIp);
+        dstDevice.ArpTable[p.SrcIp] = p.SrcMac;
+        AnsiConsole.MarkupLine(string.Format(Messages.ArpReply, dstDevice.Name, srcDevice.Name, p.DstIp,
+            BitConverter.ToString(dstPort.Mac.GetAddressBytes()).Replace('-', ':')));
+        return dstPort.Mac;
+    }
+
+    private PhysicalAddress NewArpRequest(Packet p)
+    {
+        var srcDevice = GetDevice(p.SrcIp);
+        AnsiConsole.MarkupLine(string.Format(Messages.ArpRequest, srcDevice.Name, p.DstIp, p.SrcIp));
+        return NewArpReply(p);
+    }
+
     private Packet NewIcmpEchoRequest(Packet p)
     {
         var srcDevice = GetDevice(p.SrcIp);
@@ -202,14 +233,28 @@ public class Simulator
         {
             SrcIp = srcPort.Ip, SrcMac = srcPort.Mac,
             DstIp = (new IPAddressRange(srcPort.Ip, srcPort.Mask).Contains(p.DstIp)
-                ? srcPort.Ip
+                ? p.DstIp
                 : srcDevice.Gateway) ?? throw new InvalidOperationException()
         };
 
         if (srcDevice.ArpTable.ContainsKey(newP.DstIp))
         {
+            var dstDevice = GetDevice(newP.DstIp);
+            var dstPort = dstDevice.GetPort(newP.DstIp);
             newP.DstMac = srcDevice.ArpTable[newP.DstIp];
+            newP.RequestType = RequestType.IcmpEchoRequest;
+            AnsiConsole.MarkupLine(string.Format(Messages.IcmpEchoRequest, srcDevice.Name, dstDevice.Name, srcPort.Ip,
+                dstPort.Ip, p.TTL));
+            p = newP;
         }
+        else
+        {
+            newP.DstMac = NewArpRequest(newP);
+            srcDevice.ArpTable[newP.DstIp] = newP.DstMac;
+            p = NewIcmpEchoRequest(newP);
+        }
+
+        return p;
     }
 
     private Packet ProcessPackage(Packet p, out bool unfinished)
@@ -330,7 +375,7 @@ public class Simulator
             table.AddRow(
                 node.Name,
                 BitConverter.ToString(node.Port.Mac.GetAddressBytes()).Replace('-', ':'),
-                $"{node.Port.Ip}/{node.Mask}",
+                $"{node.Port.Ip}/{node.Port.Mask}",
                 node.Gateway.ToString());
         }
 
